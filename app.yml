@@ -1,1 +1,1 @@
-command: ["sh", "-c", "pip install -r backend/requirements.txt && cd backend && python3 -m uvicorn app:app --host 0.0.0.0 --port $DATABRICKS_APP_PORT"]
+command: ["sh", "-c", "python3 -m pip install -r backend/requirements.txt && cd backend && python3 -m uvicorn app:app --host 0.0.0.0 --port $DATABRICKS_APP_PORT"]
