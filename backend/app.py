@@ -6,7 +6,11 @@ You only need to set DATABRICKS_HTTP_PATH (your SQL warehouse endpoint) in the
 App's environment variables settings.
 """
 import os
+import json
+import time
 import traceback
+import urllib.parse
+import urllib.request
 from contextlib import contextmanager
 from typing import Optional
 
@@ -63,12 +67,49 @@ def _get_http_path() -> str:
     return "/sql/1.0/warehouses/ca4d400fc8ce3eea"
 
 
+# Token cache for OAuth M2M (avoid requesting a new token on every query)
+_token_cache: dict = {"token": None, "expires_at": 0.0}
+
+
+def _get_access_token() -> str:
+    """Return access token — PAT if set, else OAuth M2M via client credentials."""
+    if os.environ.get("DATABRICKS_TOKEN"):
+        return os.environ["DATABRICKS_TOKEN"]
+
+    now = time.time()
+    if _token_cache["token"] and now < _token_cache["expires_at"] - 60:
+        return _token_cache["token"]
+
+    host = os.environ["DATABRICKS_HOST"]
+    client_id = os.environ["DATABRICKS_CLIENT_ID"]
+    client_secret = os.environ["DATABRICKS_CLIENT_SECRET"]
+
+    data = urllib.parse.urlencode({
+        "grant_type": "client_credentials",
+        "scope": "all-apis",
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }).encode()
+
+    req = urllib.request.Request(
+        f"https://{host}/oidc/v1/token",
+        data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    with urllib.request.urlopen(req) as resp:
+        result = json.loads(resp.read())
+
+    _token_cache["token"] = result["access_token"]
+    _token_cache["expires_at"] = now + result.get("expires_in", 3600)
+    return _token_cache["token"]
+
+
 @contextmanager
 def get_cursor():
     conn = sql.connect(
         server_hostname=os.environ["DATABRICKS_HOST"],
         http_path=_get_http_path(),
-        access_token=os.environ["DATABRICKS_TOKEN"],
+        access_token=_get_access_token(),
     )
     cursor = conn.cursor()
     try:
