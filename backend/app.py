@@ -6,11 +6,13 @@ You only need to set DATABRICKS_HTTP_PATH (your SQL warehouse endpoint) in the
 App's environment variables settings.
 """
 import os
+import traceback
 from contextlib import contextmanager
 from typing import Optional
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from databricks import sql
 
@@ -28,14 +30,44 @@ app.add_middleware(
 
 
 # ─────────────────────────────────────────────
+# Health check — visit /api/health to debug env vars
+# ─────────────────────────────────────────────
+
+@app.get("/api/health")
+def health():
+    host = os.environ.get("DATABRICKS_HOST", "NOT SET")
+    token = "SET" if os.environ.get("DATABRICKS_TOKEN") else "NOT SET"
+    http_path = os.environ.get("DATABRICKS_HTTP_PATH", "NOT SET")
+    warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID", "NOT SET")
+    all_env = {k: v for k, v in os.environ.items() if "DATABRICKS" in k or "databricks" in k.lower()}
+    return {
+        "DATABRICKS_HOST": host,
+        "DATABRICKS_TOKEN": token,
+        "DATABRICKS_HTTP_PATH": http_path,
+        "DATABRICKS_WAREHOUSE_ID": warehouse_id,
+        "all_databricks_env": list(all_env.keys()),
+    }
+
+
+# ─────────────────────────────────────────────
 # DB connection
 # ─────────────────────────────────────────────
+
+def _get_http_path() -> str:
+    """Return HTTP path — from env var or derived from DATABRICKS_WAREHOUSE_ID."""
+    if os.environ.get("DATABRICKS_HTTP_PATH"):
+        return os.environ["DATABRICKS_HTTP_PATH"]
+    if os.environ.get("DATABRICKS_WAREHOUSE_ID"):
+        return f"/sql/1.0/warehouses/{os.environ['DATABRICKS_WAREHOUSE_ID']}"
+    # Hardcoded fallback (the Serverless-Small warehouse)
+    return "/sql/1.0/warehouses/ca4d400fc8ce3eea"
+
 
 @contextmanager
 def get_cursor():
     conn = sql.connect(
         server_hostname=os.environ["DATABRICKS_HOST"],
-        http_path=os.environ["DATABRICKS_HTTP_PATH"],
+        http_path=_get_http_path(),
         access_token=os.environ["DATABRICKS_TOKEN"],
     )
     cursor = conn.cursor()
@@ -44,6 +76,14 @@ def get_cursor():
     finally:
         cursor.close()
         conn.close()
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=500,
+        content={"error": str(exc), "detail": traceback.format_exc()},
+    )
 
 
 def parse_months(months_param: Optional[str]) -> Optional[list[str]]:
