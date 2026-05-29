@@ -136,6 +136,15 @@ def avant_view(origination: Optional[str] = None, months: Optional[str] = None, 
     with get_cursor() as cur:
         return queries.get_avant_view(cur, origination, parse_months(months), competitor)
 
+@app.get("/api/competitor-view")
+def competitor_view(
+    origination: Optional[str] = None,
+    months: Optional[str] = None,
+    competitor: Optional[str] = None,
+):
+    with get_cursor() as cur:
+        return queries.get_competitor_view(cur, origination, parse_months(months), competitor)
+
 FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 if os.path.isdir(FRONTEND_DIST):
     app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="static")
