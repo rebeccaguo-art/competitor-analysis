@@ -1,11 +1,1 @@
-command:
-  - sh
-  - -c
-  - "pip install -r backend/requirements.txt && cd backend && ../.venv/bin/uvicorn app:app --host 0.0.0.0 --port $DATABRICKS_APP_PORT"
-
-env:
-  - name: DATABRICKS_TOKEN
-    valueFrom:
-      secretRef:
-        scope: competiscan
-        key: databricks-token
+command: ["sh", "-c", "pip install -r backend/requirements.txt && cd backend && ../.venv/bin/uvicorn app:app --host 0.0.0.0 --port $DATABRICKS_APP_PORT"]
