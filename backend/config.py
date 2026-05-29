@@ -1,5 +1,5 @@
 # config.py — change TABLE_NAME here after migration to shared schema
-TABLE_NAME = "avant_orgs.revenue.competiscan_master_with_competitor"
+TABLE_NAME = "avant_users.rebecca_guo.competiscan_master_with_competitor"
 
 # Pre-approved filter — matches Crystal's exact definition
 PRE_APPROVED_FILTER = """(
