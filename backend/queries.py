@@ -360,3 +360,41 @@ def get_avant_view(cursor, origination=None, months=None, competitor=None) -> li
         ORDER BY score_band, avant_af, cooccurrence_count DESC
     """
     return run_query(cursor, sql)
+
+# ─────────────────────────────────────────────
+# Competitor View
+# ─────────────────────────────────────────────
+
+def get_competitor_view(cursor, origination=None, months=None, competitor=None) -> list[dict]:
+    """
+    For a selected competitor, show which other products appear
+    pre-approved on the same shopper page, grouped by score band.
+    """
+    if not competitor or competitor in ("All competitors", ""):
+        return []
+    where_focal = _build_filters(origination, months, competitor, preapproved=True, table_alias="a")
+    where_other = _build_filters(origination, months, None, preapproved=True, table_alias="b")
+    sql = f"""
+        SELECT
+            CAST(FLOOR(a.vantage_score_use_transunion_score / 10) * 10 AS INT) AS score_band,
+            a.competitor AS focal_competitor,
+            a.card_name AS focal_card,
+            COALESCE(a.annual_fee, 'N/A') AS focal_annual_fee,
+            b.competitor AS co_competitor,
+            b.card_name AS co_card,
+            COALESCE(b.annual_fee, 'N/A') AS co_annual_fee,
+            COUNT(DISTINCT a.link_to_screenshots) AS cooccurrence_count
+        FROM {TABLE_NAME} a
+        JOIN {TABLE_NAME} b
+          ON a.link_to_screenshots = b.link_to_screenshots
+        WHERE {where_focal}
+          AND {where_other}
+          AND b.competitor != a.competitor
+          AND a.podium_rank <= 5
+          AND b.podium_rank <= 5
+          AND a.vantage_score_use_transunion_score IS NOT NULL
+        GROUP BY score_band, a.competitor, a.card_name, a.annual_fee,
+                 b.competitor, b.card_name, b.annual_fee
+        ORDER BY score_band, a.card_name, cooccurrence_count DESC
+    """
+    return run_query(cursor, sql)
