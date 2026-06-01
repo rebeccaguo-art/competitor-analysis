@@ -190,8 +190,8 @@ def get_preapproved_share(cursor, origination=None, months=None, top_n=None):
             FROM all_counts a LEFT JOIN pa_counts p
               ON a.month = p.month AND a.competitor = p.competitor
         )
-        SELECT month, competitor, pa_share_pct FROM ranked WHERE rn <= {n}
-        ORDER BY month, pa_share_pct DESC
+        SELECT month, competitor, share_pct FROM ranked WHERE rn <= {n}
+        ORDER BY month, share_pct DESC
     """
     return run_query(cursor, sql)
 
