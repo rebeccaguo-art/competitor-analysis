@@ -4,10 +4,10 @@ TABLE_NAME = "avant_orgs.revenue.competiscan_master_with_competitor"
 # Pre-approved filter — matches Crystal's exact definition
 PRE_APPROVED_FILTER = """(
     (origination = 'Credit Karma'
-     AND approval_odds IN ('Outstanding', 'Karma Guarantee', 'karma Guarantee', 'Karma Guaratee'))
+     AND approval_odds IN ('Outstanding', 'CKG'))
     OR
     (origination = 'Experian'
-     AND approval_odds IN ('Pre-Approved', 'Pre- Approved'))
+     AND approval_odds = 'Pre-Approved')
 )"""
 
 # Avant competitor name as it appears in the `competitor` column
