@@ -185,7 +185,7 @@ def get_preapproved_share(cursor, origination=None, months=None, top_n=None):
         ),
         ranked AS (
             SELECT a.month, a.competitor,
-                   ROUND(COALESCE(p.pa_total, 0) * 100.0 / a.total, 2) AS pa_share_pct,
+                   ROUND(COALESCE(p.pa_total, 0) * 100.0 / a.total, 2) AS share_pct,
                    ROW_NUMBER() OVER (PARTITION BY a.month ORDER BY a.total DESC) AS rn
             FROM all_counts a LEFT JOIN pa_counts p
               ON a.month = p.month AND a.competitor = p.competitor
